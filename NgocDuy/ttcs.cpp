@@ -2,10 +2,12 @@
 #include <fstream>
 #include <io.h>
 #include <fcntl.h>
+#include <limits>
 #include <codecvt>
 #include <windows.h>
 #include <vector>
 #include <sstream>
+#undef max
 #pragma execution_character_set( "utf-8" )
 using namespace std;
 
@@ -46,7 +48,8 @@ public:
 		return ntn.ngay + L"/" + ntn.thang + L"/" + ntn.nam;
 	}
 	wstring hienThi() {
-		return  L" Tên : " +tenToString() +L"   Chức vụ : " + chucVuToString() + L"	Ngày sinh : " + ntnToString() + L"	Hệ số lương : " + this->luong;
+		return  L" Tên : " +tenToString() +L"   Chức vụ : " + chucVuToString() + L"	Ngày sinh : " + ntnToString() + L"	Hệ số lương : " + this->luong ;
+
 	}
 	bool timKiem(wstring str) {
 		return false;
@@ -125,7 +128,7 @@ void canhBao() {
 	wcout << L"??? Giá trị bạn nhập vào không đúng ???";
 	wcout << L"Vui lòng nhập lại" << endl;
 	wcin.clear();
-	wcin.ignore();
+	wcin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 void form(wstring str) {
 	wcout <<endl<< L"----------------------------" << endl;
@@ -192,12 +195,9 @@ bool soSanhString(wstring one, wstring two) {
 	while (getline(lineStr2, str2,L' ')) {
 		tokens2.push_back(str2);
 	}
-	const wchar_t* wcs = to_vnLowerCase(one).c_str();
-	const wchar_t* wsc = to_vnLowerCase(two).c_str();
 	if (tokens2.size()==1)
 	{
-		
-		if (_wcsicmp(wcs, wsc) == 0)
+		if (to_vnLowerCase(one)==to_vnLowerCase(two))
 		{
 			return true;
 		}
@@ -206,13 +206,12 @@ bool soSanhString(wstring one, wstring two) {
 			return false;
 		}
 	}
-	else {
+	else 
+	{
 		if (tokens1.size() == tokens2.size()) {
 			for (int i = 0; i < tokens2.size(); i++)
 			{
-				const wchar_t* wcs = to_vnLowerCase(tokens1[i]).c_str();
-				const wchar_t* wsc = to_vnLowerCase(tokens2[i]).c_str();
-				if (_wcsicmp(wcs, wsc) != 0)
+				if (to_vnLowerCase(tokens1[i])!=to_vnLowerCase(tokens2[i]))
 				{
 					return false;
 				}
@@ -493,23 +492,31 @@ public:
 	}
 	void writeFile(wstring filename) {
 		wofstream outfile;
-		outfile.imbue(locale(locale::empty(), new codecvt_utf8_utf16<wchar_t>));
-		outfile.open(filename, ios::out);
+		outfile.imbue(locale(locale::empty(), new codecvt_utf8_utf16<wchar_t,65001>));
+		outfile.open(filename, ios::out|ios::app );
 		node* current;
 		current = first;
+		outfile << L"Họ và tên,Chức vụ,Ngày tháng năm sinh,Hệ số lương"<<endl;
 		while (current != NULL)
 		{
 			outfile << current->nhanVien.toString()<<endl;
 			current = current->next;
 		}
 		clrscr();
-		wcout << L"Xuất file thành công" << endl;
+		wcout <<endl<< L"Xuất file thành công" << endl;
 	}
 	void timKiemTen(bool isXoa=false) {
 		wstring ten;
 		int pos = 0;
-		smallForm(L"Tìm kiếm theo họ tên");
-		wcout << L"Nhập họ hoặc tên >>>>>> ";
+		if (!isXoa)
+		{
+			smallForm(L"Tìm kiếm theo họ tên");
+			wcout << L"Nhập họ hoặc tên >>>>>> ";
+		}
+		else {
+			smallForm(L"Xóa theo họ tên");
+			wcout << L"Nhập họ và tên >>>>>> ";
+		}
 		wcin.ignore();
 		getline(wcin, ten);
 		node* current;
@@ -537,14 +544,24 @@ public:
 				wcout << L" ??? Không tìm thấy thông tin nhân viên" << endl;
 			}
 		}
+		else {
+			xoaNhanVien(poss,ds);
+		}
 	}
 	void timKiemLuong(bool isXoa=false) {
 		wstring luong;
 		wstring dau;
 
 		int pos = 0;
-		smallForm(L"Tìm kiếm theo hệ số lương");
-		wcout << L"Nhập hệ số lương (nhập <n , >n để tìm theo giới hạn )>>>>> ";
+		if (!isXoa)
+		{
+			smallForm(L"Tìm kiếm theo hệ số lương");
+			wcout << L"Nhập hệ số lương ( nhập <n , >n để định giới hạn) >>>>>> ";
+		}
+		else {
+			smallForm(L"Xóa theo hệ số lương");
+			wcout << L"Nhập hệ số lương ( nhập <n , >n để định giới hạn)  >>>>>> ";
+		}
 		wcin.ignore();
 		getline(wcin, luong);
 		if (luong.substr(0,1) == L"<"|| luong.substr(0, 1) == L">") {
@@ -579,12 +596,21 @@ public:
 				wcout << L" ??? Không tìm thấy thông tin nhân viên" << endl;
 			}
 		}
+		else {
+			xoaNhanVien(poss, ds);
+		}
 	}
 	void timKiemNtn(bool isXoa=false) {
 		wstring str;
 		int pos = 0;
-		smallForm(L"Tìm kiếm theo ngày tháng năm sinh");
-		wcout << L"Nhập ngày tháng năm sinh (có thể nhập ngày hoặc tháng hoặc năm) >>>>> ";
+		if (!isXoa) {
+			smallForm(L"Tìm kiếm theo ngày tháng năm sinh");
+			wcout << L"Nhập ngày tháng năm sinh (có thể nhập ngày hoặc tháng hoặc năm) >>>>> ";
+		}
+		else {
+			smallForm(L"Xóa theo ngày tháng năm sinh");
+			wcout << L"Nhập ngày tháng năm sinh (có thể nhập ngày hoặc tháng hoặc năm) >>>>> ";
+		}
 		wcin.ignore();
 		getline(wcin,str);
 		node* current;
@@ -612,12 +638,21 @@ public:
 				wcout << L" ??? Không tìm thấy thông tin nhân viên" << endl;
 			}
 		}
+		else {
+			xoaNhanVien(poss, ds);
+		}
 	}
 	void timKiemChucVu(bool isXoa=false) {
 		wstring str;
 		int pos = 0;
-		smallForm(L"Tìm kiếm theo chức vụ");
-		wcout << L"Nhập chức vụ >>>>> ";
+		if (!isXoa) {
+			smallForm(L"Tìm kiếm theo chức vụ");
+			wcout << L"Nhập tên chức vụ >>>>> ";
+		}
+		else {
+			smallForm(L"Xóa theo chức vụ");
+			wcout << L"Nhập tên chức vụ >>>>> ";
+		}
 		wcin.ignore();
 		getline(wcin, str);
 		node* current;
@@ -646,6 +681,49 @@ public:
 			}
 		}
 	}
+	void xoaNhanVien(vector <int> tokens,vector <NhanVien> ds) {
+		int pos;
+		node* current;
+	
+		for (int i = 0; i < tokens.size(); i++)
+		{
+			pos = 0;
+			current = first;
+			while (current != NULL)
+			{
+				if (pos == tokens[i]) {
+					current->nhanVien.chucvu.priority=0;
+				}
+				pos++;
+				current = current->next;
+			}
+		}
+		node* tmp, * prev = NULL;
+		tmp = first;
+		while (tmp!=NULL)
+		{
+			if (tmp == first && tmp->nhanVien.chucvu.priority == 0) {
+				first = tmp->next;
+				free(tmp);
+				tmp = first;
+			}
+			else if (tmp!=first&&tmp->nhanVien.chucvu.priority == 0) {
+				prev->next = tmp->next;
+				free(tmp);
+				tmp = prev->next;
+			}
+			else {
+				prev = tmp;
+				tmp = tmp->next;
+			}
+		}
+		wcout << L"Đã xóa thành công các nhân viên sau"<<endl;
+			for (int i = 0; i < ds.size(); i++)
+			{
+				wcout<<endl<<ds[i].hienThi()<<endl;
+			}
+
+	}
 };
 
 //tạo list 
@@ -672,7 +750,6 @@ void hienThiMeNu() {
 	wcout << L"6. Xuất file danh sách nhân viên " << endl;
 	wcout << L"7. Hiển thị danh sách nhân viên  " << endl;
 	wcout << L"8. Thoát chương trình " << endl;
-
 	wcout << L">>>>>>>>>>"; wcin >> input;
 
 	if (!wcin)
@@ -904,9 +981,44 @@ void menu_4() {
 		hienThiMeNu();
 	}
 	else {
-		wstring info;
+		int input;
 		form(L"Xóa nhân viên");
-		wcout << L"Nhập thông tin nhân viên cần xóa >>>>>>"; wcin >> info;
+		wcout << L"	1. Theo họ và tên " << endl;
+		wcout << L"	2. Theo ngày tháng năm sinh " << endl;
+		wcout << L"	3. Theo chức vụ " << endl;
+		wcout << L"	4. Theo hệ số lương " << endl;
+		wcout << L"	5. Quay lại menu" << endl;
+		wcout << L">>>>>>>>>>"; wcin >> input;
+		if (!wcin) {
+			canhBao();
+		}
+		else {
+			clrscr();
+			switch (input)
+			{
+			case 1:
+
+				list.timKiemTen(true);
+				break;
+			case 2:
+				list.timKiemNtn(true);
+				break;
+			case 3:
+				list.timKiemChucVu(true);
+				break;
+			case 4:
+				list.timKiemLuong(true);
+				break;
+			case 5:
+				clrscr();
+				hienThiMeNu();
+				break;
+			default:
+				canhBao();
+				break;
+			}
+		}
+		menu_4();
 	}
 }
 //hết menu 4
@@ -1000,9 +1112,6 @@ int main()
 	SetConsoleCP(CP_UTF8);
 	int resultin=_setmode(_fileno(stdin), _O_U16TEXT);
 	int resultout=_setmode(_fileno(stdout), _O_U16TEXT);
-	wstring s = L"Xin Chào Ổng Đâu Rồi Ă Â Ư Ô Ê Ơ ";
-	wstring slo = to_vnLowerCase(s);
-	wcout << slo;
 	hienThiMeNu();
 	
 }
